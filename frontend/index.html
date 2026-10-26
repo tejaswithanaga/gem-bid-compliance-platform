@@ -1,4 +1,5 @@
 <!doctype html>
+
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -110,10 +111,24 @@ button {
   font-size: 15px;
   font-weight: bold;
   cursor: pointer;
+  margin: 5px 5px 5px 0;
 }
 
 button:hover {
   background: #0e4b96;
+}
+
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+#downloadBtn {
+  background: #18794e;
+}
+
+#downloadBtn:hover {
+  background: #11643e;
 }
 
 #summary {
@@ -195,15 +210,14 @@ footer {
   }
 }
 </style>
+
 </head>
 
 <body>
 
 <header>
   <div class="tag">Procurement Support • Student Demo</div>
-
   <h1>AI-Powered Integrated Bid Compliance Verification Platform</h1>
-
   <p>GeM procurement — sample checklist and compliance summary</p>
 </header>
 
@@ -212,88 +226,96 @@ footer {
   <section class="card">
     <h2>Bid details</h2>
 
-    <p class="muted">
-      Enter a sample tender name and tick the items you have verified.
-      This demo uses simple checklist rules.
-    </p>
+<p class="muted">
+  Enter a sample tender name and tick the items you have verified.
+  This demo uses simple checklist rules.
+</p>
 
-    <form id="bidForm">
+<form id="bidForm">
+  <label class="title" for="tender">Tender / bid title</label>
 
-      <label class="title" for="tender">Tender / bid title</label>
+  <input
+    id="tender"
+    type="text"
+    required
+    placeholder="e.g. Supply of desktop computers"
+  >
 
-      <input
-        id="tender"
-        type="text"
-        required
-        placeholder="e.g. Supply of desktop computers"
-      >
+  <label class="title">Compliance checklist</label>
 
-      <label class="title">Compliance checklist</label>
+  <label class="check">
+    <input type="checkbox" name="technical_specs">
+    <span>Technical specifications are provided</span>
+  </label>
 
-      <label class="check">
-        <input type="checkbox" name="technical_specs">
-        <span>Technical specifications are provided</span>
-      </label>
+  <label class="check">
+    <input type="checkbox" name="warranty">
+    <span>Warranty information is provided</span>
+  </label>
 
-      <label class="check">
-        <input type="checkbox" name="warranty">
-        <span>Warranty information is provided</span>
-      </label>
+  <label class="check">
+    <input type="checkbox" name="delivery_period">
+    <span>Delivery period is provided</span>
+  </label>
 
-      <label class="check">
-        <input type="checkbox" name="delivery_period">
-        <span>Delivery period is provided</span>
-      </label>
+  <label class="check">
+    <input type="checkbox" name="price_quote">
+    <span>Price quote is provided</span>
+  </label>
 
-      <label class="check">
-        <input type="checkbox" name="price_quote">
-        <span>Price quote is provided</span>
-      </label>
+  <label class="check">
+    <input type="checkbox" name="seller_documents">
+    <span>Required seller documents are confirmed</span>
+  </label>
 
-      <label class="check">
-        <input type="checkbox" name="seller_documents">
-        <span>Required seller documents are confirmed</span>
-      </label>
+  <button id="verifyBtn" type="submit">Verify Sample Bid</button>
+</form>
 
-      <button type="submit">Verify Sample Bid</button>
-
-    </form>
   </section>
 
   <section class="card">
-
     <h2>Verification report</h2>
 
-    <p class="muted">
-      Your backend-generated result will appear here.
-    </p>
+<p class="muted">
+  Your backend-generated result will appear here.
+</p>
 
-    <div id="summary">
-      <p>Submit the checklist to generate a report.</p>
+<div id="summary" aria-live="polite">
+  <p>Submit the checklist to generate a report.</p>
 
-      <div class="progress-container">
-        <div id="progressBar" class="progress-bar">0%</div>
-      </div>
-    </div>
+  <div class="progress-container">
+    <div id="progressBar" class="progress-bar">0%</div>
+  </div>
+</div>
 
-    <div id="details"></div>
+<div id="details"></div>
 
-    <p class="disclaimer">
-      Important: This is an educational prototype. It does not connect to
-      GeM, use a real AI model, verify official tender rules, or replace
-      a procurement professional's review.
-    </p>
+<button id="downloadBtn" type="button" disabled>
+  Download Report
+</button>
+
+<p class="disclaimer">
+  Important: This is an educational prototype. It does not connect to
+  GeM, use a real AI model, verify official tender rules, or replace
+  a procurement professional's review.
+</p>
 
   </section>
 
 </main>
 
 <footer>
-  Bid Compliance Verification • Version 2.0 • Dockerized frontend and backend
+  Bid Compliance Verification • Version 3.0 • Dockerized frontend and backend
 </footer>
 
 <script>
 const form = document.getElementById("bidForm");
+const summary = document.getElementById("summary");
+const details = document.getElementById("details");
+const downloadBtn = document.getElementById("downloadBtn");
+const verifyBtn = document.getElementById("verifyBtn");
+
+let latestReport = null;
 
 form.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -310,9 +332,9 @@ form.addEventListener("submit", async (event) => {
     checks[key] = form.elements[key].checked;
   });
 
-  const summary = document.getElementById("summary");
-  const details = document.getElementById("details");
-
+  latestReport = null;
+  downloadBtn.disabled = true;
+  verifyBtn.disabled = true;
   summary.textContent = "Checking bid...";
   details.innerHTML = "";
 
@@ -336,12 +358,27 @@ form.addEventListener("submit", async (event) => {
 
     const score = Number(data.compliance_score);
 
+    if (!Number.isFinite(score)) {
+      throw new Error("The server returned an invalid compliance score.");
+    }
+
+    latestReport = {
+      tenderTitle: String(data.tender_title ?? ""),
+      score: score,
+      status: String(data.overall_status ?? "Not specified"),
+      passed: data.checks_passed,
+      total: data.checks_total,
+      results: Array.isArray(data.results) ? data.results : [],
+      generatedAt: new Date().toLocaleString()
+    };
+
     summary.innerHTML = `
-      <div class="score">${score}%</div>
-      <strong>${data.overall_status}</strong>
-      <p>${escapeHTML(data.tender_title)}</p>
+      <div class="score">${escapeHTML(score)}%</div>
+      <strong>${escapeHTML(latestReport.status)}</strong>
+      <p>${escapeHTML(latestReport.tenderTitle)}</p>
       <small>
-        ${data.checks_passed} of ${data.checks_total} checklist items passed
+        ${escapeHTML(latestReport.passed)} of
+        ${escapeHTML(latestReport.total)} checklist items passed
       </small>
 
       <div class="progress-container">
@@ -352,20 +389,20 @@ form.addEventListener("submit", async (event) => {
           role="progressbar"
           aria-valuemin="0"
           aria-valuemax="100"
-          aria-valuenow="${score}"
+          aria-valuenow="${Math.max(0, Math.min(100, score))}"
         >0%</div>
       </div>
     `;
 
     const progressBar = document.getElementById("progressBar");
 
-    // Animate the bar from 0% to the compliance score.
     requestAnimationFrame(() => {
-      progressBar.style.width = `${Math.max(0, Math.min(100, score))}%`;
+      progressBar.style.width =
+        `${Math.max(0, Math.min(100, score))}%`;
       progressBar.textContent = `${score}%`;
     });
 
-    details.innerHTML = data.results.map((item) => {
+    details.innerHTML = latestReport.results.map((item) => {
       const compliant = item.status === "Compliant";
 
       return `
@@ -378,10 +415,66 @@ form.addEventListener("submit", async (event) => {
       `;
     }).join("");
 
+    downloadBtn.disabled = false;
+
   } catch (error) {
     summary.textContent =
-      error.message + " Please check that both Docker containers are running.";
+      error.message +
+      " Please check that both Docker containers are running.";
+  } finally {
+    verifyBtn.disabled = false;
   }
+});
+
+downloadBtn.addEventListener("click", () => {
+  if (!latestReport) {
+    alert("Please verify a bid before downloading its report.");
+    return;
+  }
+
+  const reportLines = [
+    "GE M BID COMPLIANCE VERIFICATION REPORT",
+    "=======================================",
+    "",
+    `Tender / Bid Title: ${latestReport.tenderTitle}`,
+    `Compliance Score: ${latestReport.score}%`,
+    `Overall Status: ${latestReport.status}`,
+    `Checklist Items Passed: ${latestReport.passed} of ${latestReport.total}`,
+    `Report Generated: ${latestReport.generatedAt}`,
+    "",
+    "CHECKLIST RESULTS",
+    "-----------------",
+    ...latestReport.results.map((item, index) =>
+      `${index + 1}. ${item.item}: ${item.status}`
+    ),
+    "",
+    "DISCLAIMER",
+    "This is an educational prototype. It does not connect to GeM,",
+    "verify official tender rules, or replace a procurement professional."
+  ];
+
+  const reportText = reportLines.join("\r\n");
+  const blob = new Blob(
+    ["\uFEFF", reportText],
+    { type: "text/plain;charset=utf-8" }
+  );
+
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement("a");
+
+  const safeTitle = latestReport.tenderTitle
+    .replace(/[^a-z0-9_-]+/gi, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 60) || "bid";
+
+  link.href = url;
+  link.download = `compliance-report-${safeTitle}.txt`;
+
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
 });
 
 function escapeHTML(value) {
