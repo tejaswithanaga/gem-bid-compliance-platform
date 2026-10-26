@@ -46,3 +46,8 @@ gem-bid-compliance-platform/
 
 ## Disclaimer
 This is an educational prototype. It does not connect to the Government e-Marketplace (GeM) or replace official compliance checks or professional procurement review.
+
+## Future Enhancements
+- Add downloadable compliance reports.
+- Improve validation messages.
+- Add automated testing for checklist verification.
