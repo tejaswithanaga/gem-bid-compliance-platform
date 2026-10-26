@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AI-Powered Bid Compliance Verification</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#172b4d;background:#f3f6fb}
+*{box-sizing:border-box}body{margin:0}
+header{background:#123d73;color:white;padding:24px max(22px,calc((100% - 1050px)/2))}
+header .tag{font-size:12px;letter-spacing:1px;text-transform:uppercase;opacity:.85}
+header h1{font-size:clamp(24px,4vw,34px);line-height:1.2;margin:9px 0}
+header p{margin:0;color:#e2edff}
+main{max-width:1050px;margin:28px auto;padding:0 18px;display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.card{background:white;border:1px solid #dce4ef;border-radius:12px;padding:22px;box-shadow:0 5px 18px #102e5510}
+h2{margin:0 0 8px;font-size:21px}.muted{color:#62738a;line-height:1.5;font-size:14px}
+label.title{display:block;font-weight:bold;margin:18px 0 7px}
+input[type=text]{width:100%;padding:12px;border:1px solid #b9c6d8;border-radius:7px;font-size:15px}
+.check{display:flex;align-items:flex-start;gap:10px;margin:15px 0;line-height:1.4}
+.check input{margin-top:3px;width:17px;height:17px}
+button{background:#1762bd;color:white;border:0;border-radius:7px;padding:12px 17px;font-size:15px;font-weight:bold;cursor:pointer}
+button:hover{background:#0e4b96}
+#summary{padding:16px;background:#f0f5fc;border-radius:9px;margin-top:14px}
+.score{font-size:38px;font-weight:bold;color:#1762bd}
+.row{display:flex;justify-content:space-between;gap:12px;border-bottom:1px solid #e5ebf3;padding:12px 0;font-size:14px}
+.ok{color:#18794e;font-weight:bold}.bad{color:#a15c00;font-weight:bold}
+.disclaimer{font-size:12px;color:#6b778c;line-height:1.5;margin-top:16px}
+footer{text-align:center;color:#66768c;padding:0 18px 26px;font-size:12px}
+@media(max-width:760px){main{grid-template-columns:1fr}header{padding:22px}}
+</style>
+</head>
+<body>
+<header>
+  <div class="tag">Procurement Support • Student Demo</div>
+  <h1>AI-Powered Integrated Bid Compliance Verification Platform</h1>
+  <p>GeM procurement — sample checklist and compliance summary</p>
+</header>
+<main>
+  <section class="card">
+    <h2>Bid details</h2>
+    <p class="muted">Enter a sample tender name and tick the items you have verified. This demo uses simple checklist rules.</p>
+    <form id="bidForm">
+      <label class="title" for="tender">Tender / bid title</label>
+      <input id="tender" type="text" required placeholder="e.g. Supply of desktop computers">
+      <label class="title">Compliance checklist</label>
+      <label class="check"><input type="checkbox" name="technical_specs"> <span>Technical specifications are provided</span></label>
+      <label class="check"><input type="checkbox" name="warranty"> <span>Warranty information is provided</span></label>
+      <label class="check"><input type="checkbox" name="delivery_period"> <span>Delivery period is provided</span></label>
+      <label class="check"><input type="checkbox" name="price_quote"> <span>Price quote is provided</span></label>
+      <label class="check"><input type="checkbox" name="seller_documents"> <span>Required seller documents are confirmed</span></label>
+      <button type="submit">Verify Sample Bid</button>
+    </form>
+  </section>
+  <section class="card">
+    <h2>Verification report</h2>
+    <p class="muted">Your backend-generated result will appear here.</p>
+    <div id="summary"><p>Submit the checklist to generate a report.</p></div>
+    <div id="details"></div>
+    <p class="disclaimer">Important: This is an educational prototype. It does not connect to GeM, use a real AI model, verify official tender rules, or replace a procurement professional's review.</p>
+  </section>
+</main>
+<footer>Bid Compliance Verification • Dockerized frontend and Flask backend</footer>
+<script>
+const form = document.getElementById('bidForm');
+form.addEventListener('submit', async (event) => {
+  event.preventDefault();
+  const checks = {};
+  ['technical_specs','warranty','delivery_period','price_quote','seller_documents'].forEach(k => {
+    checks[k] = form.elements[k].checked;
+  });
+  const summary = document.getElementById('summary');
+  const details = document.getElementById('details');
+  summary.textContent = 'Checking bid...';
+  details.innerHTML = '';
+  try {
+    const response = await fetch('/api/verify', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({tender_title: document.getElementById('tender').value, checks})
+    });
+    const data = await response.json();
+    if (!response.ok) throw new Error(data.error || 'Verification failed');
+    summary.innerHTML = `<div class="score">${data.compliance_score}%</div><strong>${data.overall_status}</strong><p>${data.tender_title}</p><small>${data.checks_passed} of ${data.checks_total} checklist items passed</small>`;
+    details.innerHTML = data.results.map(item => `<div class="row"><span>${item.item}</span><span class="${item.status === 'Compliant' ? 'ok':'bad'}">${item.status}</span></div>`).join('');
+  } catch (err) {
+    summary.textContent = err.message + ' Please check that both Docker containers are running.';
+  }
+});
+</script>
+</body>
+</html>
