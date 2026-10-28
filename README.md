@@ -51,4 +51,4 @@ This is an educational prototype. It does not connect to the Government e-Market
 - Add downloadable compliance reports.
 - Improve validation messages.
 - Add automated testing for checklist verification.
-CI/CD pipeline automatic trigger test
+CI/CD webhook test
