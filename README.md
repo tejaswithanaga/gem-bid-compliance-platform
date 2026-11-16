@@ -53,3 +53,7 @@ This is an educational prototype. It does not connect to the Government e-Market
 - Add automated testing for checklist verification.
 CI/CD webhook test
 Webhook test - October 28, 2026
+
+
+Merge Conflict Demo
+Version A: Changes from feature branch A.
