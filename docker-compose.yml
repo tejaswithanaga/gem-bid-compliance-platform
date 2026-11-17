@@ -1,9 +1,14 @@
 services:
   backend:
+    image: tejaswitha/gem-backend:latest
+    platform: linux/amd64
     build: ./backend
     container_name: bid-compliance-backend
     restart: unless-stopped
+
   frontend:
+    image: tejaswitha/gem-frontend:latest
+    platform: linux/amd64
     build: ./frontend
     container_name: bid-compliance-frontend
     ports:
