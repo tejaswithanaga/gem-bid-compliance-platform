@@ -13,35 +13,12 @@ pipeline {
                 echo 'Checking GeM application files'
 
                 bat '''
-                    if not exist backend\\app.py (
-                        echo ERROR: backend/app.py not found
-                        exit /b 1
-                    )
-
-                    if not exist backend\\verification.py (
-                        echo ERROR: backend/verification.py not found
-                        exit /b 1
-                    )
-
-                    if not exist backend\\tests\\test_verification.py (
-                        echo ERROR: Test file not found
-                        exit /b 1
-                    )
-
-                    if not exist backend\\requirements.txt (
-                        echo ERROR: Requirements file not found
-                        exit /b 1
-                    )
-
-                    if not exist frontend\\index.html (
-                        echo ERROR: Frontend file not found
-                        exit /b 1
-                    )
-
-                    if not exist docker-compose.yml (
-                        echo ERROR: Docker Compose file not found
-                        exit /b 1
-                    )
+                    if not exist backend\\app.py exit /b 1
+                    if not exist backend\\verification.py exit /b 1
+                    if not exist backend\\tests\\test_verification.py exit /b 1
+                    if not exist backend\\requirements.txt exit /b 1
+                    if not exist frontend\\index.html exit /b 1
+                    if not exist docker-compose.yml exit /b 1
 
                     echo All required project files found successfully.
                 '''
@@ -67,7 +44,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo 'Running automated pytest test cases'
+                echo 'Running automated verification tests'
 
                 bat '''
                     "%DOCKER_COMPOSE%" -f docker-compose.yml run --rm backend python -m pytest -v
@@ -84,24 +61,31 @@ pipeline {
 
         stage('Deploy') {
             steps {
-                echo 'Deploying GeM application'
+                echo 'Removing old containers and deploying the application'
 
                 bat '''
-                    "%DOCKER_COMPOSE%" -f docker-compose.yml up -d
+                    "%DOCKER_COMPOSE%" -f docker-compose.yml down --remove-orphans
+
+                    docker rm -f bid-compliance-backend 2>NUL
+                    docker rm -f bid-compliance-frontend 2>NUL
+
+                    "%DOCKER_COMPOSE%" -f docker-compose.yml up -d --force-recreate
 
                     if errorlevel 1 (
                         echo ERROR: Application deployment failed
                         exit /b 1
                     )
 
+                    echo Checking deployed containers
+
                     "%DOCKER_COMPOSE%" -f docker-compose.yml ps
 
                     if errorlevel 1 (
-                        echo ERROR: Unable to check container status
+                        echo ERROR: Could not check container status
                         exit /b 1
                     )
 
-                    echo GeM application deployment completed.
+                    echo Application deployment completed successfully.
                 '''
             }
         }
@@ -110,6 +94,7 @@ pipeline {
     post {
         success {
             echo 'SUCCESS: GeM application built, tested and deployed.'
+            echo 'All pipeline stages completed successfully.'
         }
 
         failure {
