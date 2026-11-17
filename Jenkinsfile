@@ -1,28 +1,23 @@
+
 pipeline {
     agent any
 
-    environment {
-        APP_DIR = 'C:\\Users\\nagat\\Downloads\\gem-bid-compliance-docker-application'
-        DOCKER_COMPOSE = 'C:\\Users\\nagat\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker-compose.exe'
-    }
-
     stages {
+
         stage('Checkout') {
             steps {
-                echo 'Checking GeM application files'
+                echo 'Checking out GeM project from GitHub'
+
+                checkout scm
 
                 bat '''
-                    if not exist "%APP_DIR%\\docker-compose.yml" (
-                        echo ERROR: docker-compose.yml not found
-                        exit /b 1
-                    )
+                    if not exist backend\\app.py exit /b 1
+                    if not exist backend\\verification.py exit /b 1
+                    if not exist backend\\tests\\test_verification.py exit /b 1
+                    if not exist frontend\\index.html exit /b 1
+                    if not exist docker-compose.yml exit /b 1
 
-                    if not exist "%APP_DIR%\\frontend\\index.html" (
-                        echo ERROR: Frontend file not found
-                        exit /b 1
-                    )
-
-                    echo Application files found successfully.
+                    echo All required project files found.
                 '''
             }
         }
@@ -31,22 +26,15 @@ pipeline {
             steps {
                 echo 'Building GeM Docker images'
 
-                bat '''
-                    "%DOCKER_COMPOSE%" -f "%APP_DIR%\\docker-compose.yml" build
-                    if errorlevel 1 exit /b 1
-                '''
+                bat 'docker compose build'
             }
         }
 
         stage('Test') {
             steps {
-                echo 'Checking Docker Compose configuration'
+                echo 'Running automated pytest test cases'
 
-                bat '''
-                    "%DOCKER_COMPOSE%" -f "%APP_DIR%\\docker-compose.yml" config
-                    if errorlevel 1 exit /b 1
-                    echo Docker Compose configuration is valid.
-                '''
+                bat 'docker compose run --rm backend python -m pytest -v'
             }
         }
 
@@ -54,24 +42,20 @@ pipeline {
             steps {
                 echo 'Deploying GeM application'
 
-                bat '''
-                    "%DOCKER_COMPOSE%" -f "%APP_DIR%\\docker-compose.yml" up -d --force-recreate
-                    if errorlevel 1 exit /b 1
+                bat 'docker compose up -d'
 
-                    "%DOCKER_COMPOSE%" -f "%APP_DIR%\\docker-compose.yml" ps
-                    if errorlevel 1 exit /b 1
-                '''
+                bat 'docker compose ps'
             }
         }
     }
 
     post {
         success {
-            echo 'SUCCESS: GeM application built, checked, and deployed.'
+            echo 'SUCCESS: GeM application built, tested and deployed.'
         }
 
         failure {
-            echo 'FAILED: Check the Console Output for the exact error.'
+            echo 'FAILED: Check Jenkins Console Output.'
         }
     }
 }
