@@ -3,6 +3,7 @@ pipeline {
     agent any
 
     environment {
+        DOCKER_EXE = 'C:\\Users\\nagat\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker.exe'
         DOCKER_COMPOSE = 'C:\\Users\\nagat\\AppData\\Local\\Programs\\DockerDesktop\\resources\\bin\\docker-compose.exe'
     }
 
@@ -20,22 +21,19 @@ pipeline {
                     if not exist frontend\\index.html exit /b 1
                     if not exist docker-compose.yml exit /b 1
 
-                    echo All required project files found successfully.
+                    echo All required project files found.
                 '''
             }
         }
 
         stage('Build') {
             steps {
-                echo 'Building GeM Docker images'
+                echo 'Building Docker images'
 
                 bat '''
                     "%DOCKER_COMPOSE%" -f docker-compose.yml build
 
-                    if errorlevel 1 (
-                        echo ERROR: Docker image build failed
-                        exit /b 1
-                    )
+                    if errorlevel 1 exit /b 1
 
                     echo Docker images built successfully.
                 '''
@@ -44,48 +42,48 @@ pipeline {
 
         stage('Test') {
             steps {
-                echo 'Running automated verification tests'
+                echo 'Running automated tests'
 
                 bat '''
                     "%DOCKER_COMPOSE%" -f docker-compose.yml run --rm backend python -m pytest -v
 
-                    if errorlevel 1 (
-                        echo ERROR: Automated tests failed
-                        exit /b 1
-                    )
+                    if errorlevel 1 exit /b 1
 
-                    echo All automated tests passed successfully.
+                    echo All 5 automated tests passed.
                 '''
             }
         }
 
         stage('Deploy') {
             steps {
-                echo 'Removing old containers and deploying the application'
+                echo 'Stopping old application containers'
 
                 bat '''
                     "%DOCKER_COMPOSE%" -f docker-compose.yml down --remove-orphans
 
-                    docker rm -f bid-compliance-backend 2>NUL
-                    docker rm -f bid-compliance-frontend 2>NUL
+                    "%DOCKER_EXE%" rm -f bid-compliance-backend
+                    "%DOCKER_EXE%" rm -f bid-compliance-frontend
+
+                    echo Checking for remaining containers
+
+                    "%DOCKER_EXE%" ps -a --filter "name=bid-compliance-backend"
+
+                    echo Starting application
 
                     "%DOCKER_COMPOSE%" -f docker-compose.yml up -d --force-recreate
 
                     if errorlevel 1 (
-                        echo ERROR: Application deployment failed
+                        echo ERROR: Deployment failed.
                         exit /b 1
                     )
 
-                    echo Checking deployed containers
+                    echo Checking application status
 
                     "%DOCKER_COMPOSE%" -f docker-compose.yml ps
 
-                    if errorlevel 1 (
-                        echo ERROR: Could not check container status
-                        exit /b 1
-                    )
+                    if errorlevel 1 exit /b 1
 
-                    echo Application deployment completed successfully.
+                    echo Deployment completed successfully.
                 '''
             }
         }
@@ -94,11 +92,10 @@ pipeline {
     post {
         success {
             echo 'SUCCESS: GeM application built, tested and deployed.'
-            echo 'All pipeline stages completed successfully.'
         }
 
         failure {
-            echo 'FAILED: Check Jenkins Console Output for details.'
+            echo 'FAILED: Check the Console Output.'
         }
 
         always {
